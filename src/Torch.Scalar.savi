@@ -1,0 +1,7 @@
+:struct Torch.Scalar(T Numeric(T)'val)
+  :let _ffi _FFI.Scalar(T)
+
+  :new "[]"(value T)
+    ffi = _FFI.Scalar(T)._new
+    ffi._init_i8(stack_address_of_variable ffi, value.i8)
+    @_ffi = ffi

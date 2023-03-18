@@ -1,0 +1,51 @@
+:struct val _FFI.Scalar(T Numeric(T)'val)
+  :let _internal_data_0 U64
+  :let _internal_data_1 U64
+  :let _internal_data_2 U64
+  :let _internal_data_3 U64
+
+  :new _new
+    @_internal_data_0 = 0
+    @_internal_data_1 = 0
+    @_internal_data_2 = 0
+    @_internal_data_3 = 0
+
+  :fun non "[]"(value T)
+    scalar = _FFI.Scalar(T)._new
+    case T <: (
+    | U8   | @_init_u8(stack_address_of_variable scalar, value.u8)
+    | I8   | @_init_i8(stack_address_of_variable scalar, value.i8)
+    | I16  | @_init_i16(stack_address_of_variable scalar, value.i16)
+    | I32  | @_init_i32(stack_address_of_variable scalar, value.i32)
+    | I64  | @_init_i64(stack_address_of_variable scalar, value.i64)
+    | F32  | @_init_f32(stack_address_of_variable scalar, value.f32)
+    | F64  | @_init_f64(stack_address_of_variable scalar, value.f64)
+    | Bool | @_init_bool(stack_address_of_variable scalar, value)
+    |
+      // TODO: Some default fallback behavior for other numeric types.
+    )
+    scalar
+
+  :ffi _init_u8(into CPointer(_FFI.Scalar(T)), value U8) @'val
+    :foreign_name torch_ffi_scalar_init_u8
+
+  :ffi _init_i8(into CPointer(_FFI.Scalar(T)), value I8) @'val
+    :foreign_name torch_ffi_scalar_init_i8
+
+  :ffi _init_i16(into CPointer(_FFI.Scalar(T)), value I16) @'val
+    :foreign_name torch_ffi_scalar_init_i16
+
+  :ffi _init_i32(into CPointer(_FFI.Scalar(T)), value I32) @'val
+    :foreign_name torch_ffi_scalar_init_i32
+
+  :ffi _init_i64(into CPointer(_FFI.Scalar(T)), value I64) @'val
+    :foreign_name torch_ffi_scalar_init_i64
+
+  :ffi _init_f32(into CPointer(_FFI.Scalar(T)), value F32) @'val
+    :foreign_name torch_ffi_scalar_init_f32
+
+  :ffi _init_f64(into CPointer(_FFI.Scalar(T)), value F64) @'val
+    :foreign_name torch_ffi_scalar_init_f64
+
+  :ffi _init_bool(into CPointer(_FFI.Scalar(T)), value Bool) @'val
+    :foreign_name torch_ffi_scalar_init_bool

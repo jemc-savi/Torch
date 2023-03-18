@@ -1,0 +1,81 @@
+:module _FFI.Tensor(T Numeric(T)'val)
+  :fun kind_code I32
+    // These values must be kept in sync with include/c10/core/ScalarType.h
+    case T <: (
+    | U8   | 0
+    | I8   | 1
+    | I16  | 2
+    | I32  | 3
+    | I64  | 4
+    | F32  | 6
+    | F64  | 7
+    | Bool | 11
+    |
+      case T.bit_width == (
+      | 8  | 1 // pseudo-I8
+      | 16 | 2 // pseudo-I16
+      | 32 | 3 // pseudo-I32
+      | 64 | 4 // pseudo-I64
+      |
+        // TODO: What is a reasonable thing to do in this fall-through case?
+        // In theory someone could supply a home-built numeric type
+        // that was an oddball size, and we'd likely have some unsafe
+        // stuff happen as a result of not having a right number to map to.
+        -1
+      )
+    )
+
+  :ffi from_data(
+    data CPointer(T)
+    dimension_list CPointer(U64)
+    dimension_count USize
+    element_size_in_bytes USize
+    element_kind I32
+  ) CPointer(@)
+    :foreign_name torch_ffi_tensor_from_data
+
+  :ffi into_data(tensor CPointer(@), into_data CPointer(T)) None
+    :foreign_name torch_ffi_tensor_into_data
+
+  :ffi itemsize(tensor CPointer(@)) U64
+    :foreign_name torch_ffi_tensor_itemsize
+
+  :ffi numel(tensor CPointer(@)) U64
+    :foreign_name torch_ffi_tensor_numel
+
+  :ffi ndimensions(tensor CPointer(@)) U64
+    :foreign_name torch_ffi_tensor_ndimensions
+
+  :ffi reshape(
+    tensor CPointer(@)
+    dimension_list CPointer(I64)
+    dimension_count USize
+  ) CPointer(@)
+    :foreign_name torch_ffi_tensor_reshape
+
+  :ffi select(
+    tensor CPointer(@)
+    dimension_index I64
+    index_in_dimension I64
+  ) CPointer(@)
+    :foreign_name torch_ffi_tensor_select
+
+  :ffi add_scalar(
+    tensor CPointer(@)
+    value CPointer(_FFI.Scalar(T))
+    alpha CPointer(_FFI.Scalar(T))
+  ) CPointer(@)
+    :foreign_name torch_ffi_tensor_add_scalar
+
+  :ffi mul_scalar(
+    tensor CPointer(@)
+    value CPointer(_FFI.Scalar(T))
+  ) CPointer(@)
+    :foreign_name torch_ffi_tensor_mul_scalar
+
+  :ffi sub_scalar(
+    tensor CPointer(@)
+    value CPointer(_FFI.Scalar(T))
+    alpha CPointer(_FFI.Scalar(T))
+  ) CPointer(@)
+    :foreign_name torch_ffi_tensor_sub_scalar
