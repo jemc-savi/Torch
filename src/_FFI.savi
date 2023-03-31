@@ -1,0 +1,7 @@
+:ffi_link_lib torch
+:ffi_link_lib torch_cpu
+:ffi_link_lib c10
+:ffi_link_lib "stdc++"
+:ffi_link_cpp_files (
+  "../shims/torch_c.cpp"
+)

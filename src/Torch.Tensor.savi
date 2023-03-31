@@ -1,0 +1,118 @@
+// // These are not all the possible tensor element types, but they are the subset
+// // of those available that are easily representable in Savi language currently.
+// :alias Torch.Tensor.ElementType: (
+// | U8
+// | I8 | I16 | I32 | I64
+// | F32 | F64
+// | Bool
+// )
+
+:class val Torch.Tensor(T Numeric(T)'val) // TODO: Allow only "machine word" numerics
+  :fun non _ffi: _FFI.Tensor(T)
+  :let _ptr CPointer(_FFI.Tensor(T))
+
+  :new val _new(@_ptr)
+
+  :fun non from_array(data Array(T)'box)
+    dims = data.size.u64
+    @_new(
+      @_ffi.from_data(
+        data.cpointer
+        stack_address_of_variable dims
+        1
+        T.byte_width.usize
+        @_ffi.kind_code
+      )
+    )
+
+  :fun into_array(data Array(T) = [])
+    orig_size = data.size
+
+    size = @total_element_count
+    data.reserve(orig_size + size)
+    while (data.size < size) (data << T.zero)
+    // TODO: make the above process more efficient - use the
+    // `resize_possibly_including_uninitialized_memory` method on `Bytes`
+    // for inspiration, but generalize to `Array`.
+
+    @_ffi.into_data(@_ptr, data.cpointer(orig_size))
+    data
+
+  :fun element_byte_width: @_ffi.itemsize(@_ptr).u8 // should == T.byte_width
+  :fun total_element_count: @_ffi.numel(@_ptr).usize
+  :fun dimension_count: @_ffi.ndimensions(@_ptr).usize
+
+  :: Validate the given shape (a list of `dimensions` sizes) for a tensor that
+  :: has the given `total_element_count`, returning a possibly different shape.
+  :: If a valid shape wasn't found, an error will be raised.
+  ::
+  :: Positive numbers are explicit dimension sizes. Zero is invalid.
+  :: The list is allowed to contain no more than one negative number, with
+  :: the negative number indicating that dimension size should be inferred.
+  :: If there is an inferred dimension size, the returned shape will replace
+  :: the negative number with the inferred dimension size.
+  :fun non coerce_shape!(
+    total_element_count USize
+    dimensions Array(I64)'box
+  ) Array(I64)'box
+    implied_element_count USize = 1
+    infer_dimension_index USize = -1
+
+    // Walk through the list of given dimension sizes.
+    // Keep track of the element count implied by the list of dimensions,
+    // and also track whether one of them was an inferrable size (negative).
+    dimensions.each_with_index -> (dimension_size, dimension_index |
+      case (
+      | dimension_size == 0 | error!
+      | dimension_size < 0 |
+        error! if (infer_dimension_index != -1)
+        infer_dimension_index = dimension_index
+      |
+        implied_element_count = implied_element_count * dimension_size.usize // TODO: use *=
+      )
+    )
+
+    // If there's a dimension we want to infer, infer it now.
+    // Note that if the total element count isn't cleanly divisible by the
+    // currently implied element count (i.e. it has a nonzero remaineder),
+    // the resulting implied element count after the size inference won't match
+    // the total element count and the final check below can still error.
+    if (infer_dimension_index != -1) (
+      inferred_dimension_size = total_element_count / implied_element_count
+      inferred_dimensions = dimensions.clone
+      try (
+        inferred_dimensions[infer_dimension_index]! = inferred_dimension_size.i64
+        dimensions = --inferred_dimensions
+      )
+      implied_element_count = implied_element_count * inferred_dimension_size // TODO: use *=
+    )
+
+    // The total number of elements implied by the dimension list needs to
+    // exactly match the actual number of elements in the tensor.
+    error! if (implied_element_count != total_element_count)
+
+    dimensions
+
+  :fun reshape!(dimensions)
+    dimensions = @coerce_shape!(@total_element_count, dimensions)
+    @_new(@_ffi.reshape(@_ptr, dimensions.cpointer, dimensions.size))
+
+  :fun select(dimension_index USize, index_in_dimension USize)
+    @_new(@_ffi.select(@_ptr, dimension_index.i64, index_in_dimension.i64))
+
+  :fun add_scalar(value T, alpha T = T.one)
+    scalar = _FFI.Scalar(T)[value]
+    alpha_scalar = _FFI.Scalar(T)[alpha]
+    @_new(@_ffi.add_scalar(@_ptr
+      stack_address_of_variable scalar
+      stack_address_of_variable alpha_scalar
+    ))
+
+  :fun subtract_scalar(value T, alpha T = T.one)
+    scalar = _FFI.Scalar(T)[value]
+    alpha_scalar = _FFI.Scalar(T)[alpha]
+    @_new(@_ffi.sub_scalar(@_ptr, stack_address_of_variable scalar, stack_address_of_variable alpha_scalar))
+
+  :fun multiply_scalar(value T)
+    scalar = _FFI.Scalar(T)[value]
+    @_new(@_ffi.mul_scalar(@_ptr, stack_address_of_variable scalar))
